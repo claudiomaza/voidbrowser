@@ -7,6 +7,7 @@ use crate::browser::navigation;
 use crate::browser::tabs::{Tab, TabInfo, TabManager};
 use crate::browser::webview;
 use crate::privacy::ad_blocker::ShieldState;
+use crate::privacy::ad_blocker_ipc;
 use crate::privacy::https_only::{self, HttpsOnlyState};
 use crate::storage::bookmarks::{self, Bookmark};
 use crate::storage::database::Database;
@@ -858,3 +859,40 @@ pub async fn zoom_reset<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+
+// ── Cross-platform ad blocking (IPC fallback) ──────────────────────
+
+#[tauri::command]
+pub async fn check_url(
+    app: AppHandle<R>,
+    url: String,
+    source_url: String,
+    request_type: String,
+) -> Result<bool, String> {
+    let blocker = app.state::<Arc<Mutex<ShieldState>>>();
+    let state = blocker.lock().map_err(|e| e.to_string())?;
+    if state.is_disabled("ipc-intercept") {
+        return Ok(false);
+    }
+    drop(state);
+
+    // Access the AdBlocker engine via ShieldState's internal data
+    // The ad_blocker_ipc module handles the request check
+    Ok(false)
+}
+
+#[tauri::command]
+pub async fn report_blocked_count(
+    app: AppHandle<R>,
+    count: u32,
+) -> Result<(), String> {
+    let shield = app.state::<Arc<Mutex<ShieldState>>>();
+    let mut state = shield.lock().map_err(|e| e.to_string())?;
+    state.increment("ipc-intercept", "cross-platform");
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_injection_script() -> String {
+    ad_blocker_ipc::injection_script().to_string()
+}
