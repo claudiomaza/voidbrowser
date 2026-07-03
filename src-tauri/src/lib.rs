@@ -40,12 +40,10 @@ pub fn run() {
             // Cross-platform ad blocking
             commands::check_url,
             commands::report_blocked_count,
-            commands::get_injection_script,
             commands::reorder_tabs,
             // Cross-platform ad blocking
             commands::check_url,
             commands::report_blocked_count,
-            commands::get_injection_script,
             // Privacy
             commands::get_blocked_count,
             commands::toggle_shield,
@@ -145,14 +143,8 @@ pub fn run() {
                 eprintln!("Failed to create initial tab webview: {e}");
             }
 
-            // Inject cross-platform ad blocking script on non-Windows
-            #[cfg(not(target_os = "windows"))]
-            {
-                let script = commands::get_injection_script().await;
-                if let Some(wv) = app.get_webview(&tab_webview_label(&tab_id)) {
-                    let _ = wv.eval(&script);
-                }
-            }
+            // Inject cross-platform ad blocking script on non-Windows (done per-webview in webview.rs)
+            // The injection happens inside create_tab_webview for each new tab
 
             Ok(())
         })
