@@ -20,7 +20,7 @@ use storage::history::SessionHistory;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_http::init())
+        
         .manage(Arc::new(Mutex::new(TabManager::new())))
         .manage(Arc::new(Mutex::new(ShieldState::new())))
         .manage(Arc::new(Mutex::new(HttpsOnlyState::new())))
@@ -36,10 +36,6 @@ pub fn run() {
             commands::close_tab,
             commands::switch_tab,
             commands::get_tabs,
-            commands::reorder_tabs,
-            // Cross-platform ad blocking
-            commands::check_url,
-            commands::report_blocked_count,
             commands::reorder_tabs,
             // Cross-platform ad blocking
             commands::check_url,
