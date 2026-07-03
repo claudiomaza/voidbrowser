@@ -17,6 +17,7 @@ const KEY_LEN: usize = 32;
 ///     stored at `{app_data_dir}/vault.key`.
 ///
 /// The returned `Zeroizing<Vec<u8>>` is automatically zeroed on drop.
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
 pub fn get_or_create_vault_key(app_data_dir: &Path) -> Result<Zeroizing<Vec<u8>>, String> {
     match try_keyring() {
         Ok(key) => Ok(key),
@@ -29,8 +30,14 @@ pub fn get_or_create_vault_key(app_data_dir: &Path) -> Result<Zeroizing<Vec<u8>>
     }
 }
 
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+pub fn get_or_create_vault_key(app_data_dir: &Path) -> Result<Zeroizing<Vec<u8>>, String> {
+    get_or_create_file_key(app_data_dir)
+}
+
 // ── Keyring path ────────────────────────────────────────────────────────
 
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
 fn try_keyring() -> Result<Zeroizing<Vec<u8>>, String> {
     let entry =
         keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).map_err(|e| format!("{e}"))?;
