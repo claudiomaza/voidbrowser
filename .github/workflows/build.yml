@@ -49,10 +49,17 @@ env:
 jobs:
   # ────────────────────────── WINDOWS ──────────────────────────
   build-windows:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_windows == 'true' || github.event_name == 'push' && env.WINDOWS_ENABLED == 'true' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check if build is enabled
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [ "${WINDOWS_ENABLED}" != "true" ]; then
+              echo "Build disabled (env.WINDOWS_ENABLED != true), exiting"
+              exit 0
+            fi
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
@@ -85,10 +92,17 @@ jobs:
 
   # ────────────────────────── LINUX ───────────────────────────
   build-linux:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_linux == 'true' || github.event_name == 'push' && env.LINUX_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check if build is enabled
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [ "${WINDOWS_ENABLED}" != "true" ]; then
+              echo "Build disabled (env.WINDOWS_ENABLED != true), exiting"
+              exit 0
+            fi
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
@@ -125,10 +139,17 @@ jobs:
 
   # ────────────────────────── macOS ──────────────────────────
   build-macos:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_macos == 'true' || github.event_name == 'push' && env.MACOS_ENABLED == 'true' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check if build is enabled
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [ "${WINDOWS_ENABLED}" != "true" ]; then
+              echo "Build disabled (env.WINDOWS_ENABLED != true), exiting"
+              exit 0
+            fi
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
@@ -155,10 +176,17 @@ jobs:
 
   # ───────────────────────── ANDROID ─────────────────────────
   build-android:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_android == 'true' || github.event_name == 'push' && env.ANDROID_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check if build is enabled
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [ "${WINDOWS_ENABLED}" != "true" ]; then
+              echo "Build disabled (env.WINDOWS_ENABLED != true), exiting"
+              exit 0
+            fi
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
@@ -202,10 +230,17 @@ jobs:
 
   # ────────────────────────── iOS ───────────────────────────
   build-ios:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_ios == 'true' || github.event_name == 'push' && env.IOS_ENABLED == 'true' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check if build is enabled
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [ "${WINDOWS_ENABLED}" != "true" ]; then
+              echo "Build disabled (env.WINDOWS_ENABLED != true), exiting"
+              exit 0
+            fi
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
