@@ -165,6 +165,78 @@ impl ShieldState {
     }
 }
 
+/// JavaScript injection for cross-platform ad blocking.
+///
+/// Intercepts fetch/XHR/element creation and calls `invoke("check_url", ...)`
+/// to query the Rust adblock engine. Only used on non-Windows platforms
+/// (Windows uses native WebView2 request interception).
+pub fn injection_script() -> &'static str {
+    ADBLOCK_INJECTION_JS
+}
+
+const ADBLOCK_INJECTION_JS: &str = r##"(function(){
+if(window.__voidBrowserAdBlockInstalled)return;
+window.__voidBrowserAdBlockInstalled=true;
+var invoke=window.__TAURI_INTERNALS__.invoke;
+if(!invoke)return;
+var blockedSet=new Set();
+var bCount=0;
+function reportBlocked(){
+ bCount++;
+ if(!window.__bTimer){
+  window.__bTimer=setTimeout(function(){
+   window.__bTimer=null;
+   if(bCount>0){try{invoke("report_blocked_count",{count:bCount})}catch(e){}bCount=0}
+  },500);
+ }
+}
+function getType(el){
+ var t=el.tagName;
+ if(t==="SCRIPT")return"script";
+ if(t==="IMG")return"image";
+ if(t==="IFRAME")return"subdocument";
+ if(t==="LINK"&&el.rel==="stylesheet")return"stylesheet";
+ if(t==="SOURCE"||t==="VIDEO"||t==="AUDIO")return"media";
+ return"other";
+}
+async function checkUrl(url,type,source){
+ try{
+  var blocked=await invoke("check_url",{url:url,sourceUrl:source||document.baseURI||location.href,requestType:type||"other"});
+  if(blocked){blockedSet.add(url);reportBlocked();return true}
+  return false;
+ }catch(e){return false}
+}
+var origFetch=window.fetch;
+window.fetch=function(input,init){
+ var url=(typeof input==="string")?input:(input instanceof Request)?input.url:"";
+ if(url)return checkUrl(url,"fetch",location.href).then(function(b){if(b)return new Response("",{status:200,statusText:"Blocked"});return origFetch.call(this,input,init)});
+ return origFetch.call(this,input,init);
+};
+var OrigXHR=window.XMLHttpRequest;
+window.XMLHttpRequest=function(){
+ var xhr=new OrigXHR();
+ var _url="";
+ var _open=xhr.open.bind(xhr);
+ var _send=xhr.send.bind(xhr);
+ xhr.open=function(m,u){_url=(typeof u==="string")?u:"";return _open(m,u)};
+ xhr.send=function(b){if(_url)checkUrl(_url,"xmlhttprequest",location.href).then(function(blocked){if(blocked){Object.defineProperty(xhr,"responseText",{get:function(){return""}});xhr.dispatchEvent(new Event("loadend"));return}});return _send(b)};
+ return xhr;
+};
+window.XMLHttpRequest.prototype=OrigXHR.prototype;
+var obs=new MutationObserver(function(muts){
+ for(var i=0;i<muts.length;i++){
+  for(var j=0;j<muts[i].addedNodes.length;j++){
+   var n=muts[i].addedNodes[j];
+   if(n.nodeType!==1)continue;
+   var tag=n.tagName.toLowerCase();
+   if((tag==="script"||tag==="img"||tag==="iframe")&&n.src){checkUrl(n.src,getType(n),location.href).then(function(b){if(b&&n.parentNode)n.parentNode.removeChild(n)})}
+   if(n.querySelectorAll)n.querySelectorAll("script[src],img[src],iframe[src]").forEach(function(c){var s=c.src||c.getAttribute("src")||"";if(s&&!blockedSet.has(s))checkUrl(s,getType(c),location.href).then(function(b){if(b&&c.parentNode)c.parentNode.removeChild(c)})});
+  }
+ }
+});
+if(document.documentElement)obs.observe(document.documentElement,{childList:true,subtree:true});
+})();"##;
+
 #[cfg(test)]
 mod tests {
     use super::*;
