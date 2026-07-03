@@ -22,6 +22,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         
         .manage(Arc::new(Mutex::new(TabManager::new())))
+        .manage(Arc::new(Mutex::new(AdBlocker::new())))
         .manage(Arc::new(Mutex::new(ShieldState::new())))
         .manage(Arc::new(Mutex::new(HttpsOnlyState::new())))
         .manage(Arc::new(Mutex::new(SessionHistory::new())))
