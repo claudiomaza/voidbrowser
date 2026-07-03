@@ -863,7 +863,7 @@ pub async fn zoom_reset<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 // ── Cross-platform ad blocking (IPC fallback) ──────────────────────
 
 #[tauri::command]
-pub async fn check_url(
+pub async fn check_url<R: Runtime>(
     app: AppHandle<R>,
     url: String,
     source_url: String,
@@ -882,7 +882,7 @@ pub async fn check_url(
 }
 
 #[tauri::command]
-pub async fn report_blocked_count(
+pub async fn report_blocked_count<R: Runtime>(
     app: AppHandle<R>,
     count: u32,
 ) -> Result<(), String> {
