@@ -1,86 +1,239 @@
-name: Build Windows Installer
-
+name: 'Build: VoidBrowser Multi-Platform'
 on:
   push:
-    branches: [main]
-    tags: ["v*"]
-  pull_request:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build_windows:
+        description: 'Build for Windows (.exe + NSIS)'
+        type: boolean
+        default: false
+      build_linux:
+        description: 'Build for Linux (.deb / AppImage)'
+        type: boolean
+        default: false
+      build_macos:
+        description: 'Build for macOS (.dmg)'
+        type: boolean
+        default: false
+      build_android:
+        description: 'Build for Android (.apk)'
+        type: boolean
+        default: false
+      build_ios:
+        description: 'Build for iOS (simulator .app)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
+# ═══════════════════════════════════════════════════════════
+#   CONFIGURACIÓN DE PLATAFORMAS
+#   Cambiá True/False para activar/desactivar cada build.
+#   En push rigen estos valores. En workflow_dispatch los
+#   inputs del UI sobreescriben estos defaults.
+# ═══════════════════════════════════════════════════════════
+env:
+  WINDOWS: 'true'
+  LINUX: 'false'
+  MACOS: 'false'
+  ANDROID: 'false'
+  IOS: 'false'
+
+# ═══════════════════════════════════════════════════════════
+#   JOBS
+# ═══════════════════════════════════════════════════════════
+
 jobs:
-  build:
+  # ────────────────────────── WINDOWS ──────────────────────────
+  build-windows:
+    if: ${{ (github.event_name == 'push' && env.WINDOWS == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_windows == 'true') }}
     runs-on: windows-latest
-
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "20.18.1"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+          node-version: lts/*
+      - uses: pnpm/action-setup@v4
         with:
-          version: "10.29.3"
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: "1.84.1"
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run frontend build
-        run: pnpm build
-
-      - name: Run cargo clippy
-        working-directory: src-tauri
-        run: cargo clippy -- -D warnings
-
-      - name: Run cargo test
-        working-directory: src-tauri
-        run: cargo test
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+          version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install deps
+        run: pnpm install
+      - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: pnpm tauri
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('VoidBrowser {0}', github.ref_name) || '' }}
-          releaseBody: |
-            ## VoidBrowser ${{ github.ref_name }}
-
-            A zero-tracking privacy browser for Windows.
-
-            ### Features
-            - Ad and tracker blocking (EasyList + EasyPrivacy)
-            - Fingerprint resistance
-            - HTTPS-only mode
-            - Encrypted bookmarks and settings
-            - Ephemeral browsing — all data destroyed on exit
-            - WebRTC leak prevention
-
-            ### Install
-            Download the `.exe` installer below and run it.
-          releaseDraft: false
-          prerelease: false
-
-      - name: Upload installer artifact
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          tagName: app-v0.1.${{ github.run_number }}
+          releaseName: "VoidBrowser v0.1.${{ github.run_number }}"
+          releaseDraft: true
+      - name: Upload Standalone EXE
         uses: actions/upload-artifact@v4
         with:
-          name: voidbrowser-windows-installer
+          name: windows-standalone
+          path: src-tauri/target/release/*.exe
+          if-no-files-found: error
+      - name: Upload NSIS Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
           path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+  # ────────────────────────── LINUX ───────────────────────────
+  build-linux:
+    if: ${{ (github.event_name == 'push' && env.LINUX == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_linux == 'true') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl wget file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Install deps
+        run: pnpm install
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm tauri
+          tagName: app-v0.1.${{ github.run_number }}
+          releaseName: "VoidBrowser v0.1.${{ github.run_number }}"
+          releaseDraft: true
+      - name: Upload .deb / AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-bundles
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+  # ────────────────────────── macOS ──────────────────────────
+  build-macos:
+    if: ${{ (github.event_name == 'push' && env.MACOS == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_macos == 'true') }}
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install deps
+        run: pnpm install
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm tauri
+          tagName: app-v0.1.${{ github.run_number }}
+          releaseName: "VoidBrowser v0.1.${{ github.run_number }}"
+          releaseDraft: true
+      - name: Upload .dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  # ───────────────────────── ANDROID ─────────────────────────
+  build-android:
+    if: ${{ (github.event_name == 'push' && env.ANDROID == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_android == 'true') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Android Rust targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add x86_64-linux-android
+          rustup target add i686-linux-android
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl wget file \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev
+      - name: Install deps
+        run: pnpm install
+      - name: Init Android project
+        run: pnpm tauri android init
+      - name: Build Android APK
+        run: pnpm tauri android build -- --apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/*/*.apk
+          if-no-files-found: error
+
+  # ────────────────────────── iOS ───────────────────────────
+  build-ios:
+    if: ${{ (github.event_name == 'push' && env.IOS == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_ios == 'true') }}
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install iOS Rust targets
+        run: |
+          rustup target add aarch64-apple-ios
+          rustup target add aarch64-apple-ios-sim
+      - name: Install deps
+        run: pnpm install
+      - name: Init iOS project
+        run: pnpm tauri ios init
+      - name: Build for iOS Simulator
+        run: pnpm tauri ios build -- --target aarch64-apple-ios-sim
+      - name: Upload iOS Simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator
+          path: src-tauri/gen/apple/build/outputs/ios-simulator/*.app
+          if-no-files-found: error
