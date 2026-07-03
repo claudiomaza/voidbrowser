@@ -39,7 +39,7 @@ env:
   WINDOWS: 'true'
   LINUX: 'false'
   MACOS: 'false'
-  ANDROID: 'false'
+  ANDROID: 'true'
   IOS: 'false'
 
 # ═══════════════════════════════════════════════════════════
