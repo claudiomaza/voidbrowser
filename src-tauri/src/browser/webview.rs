@@ -306,6 +306,15 @@ pub fn create_tab_webview<R: Runtime>(
         }
     }
 
+    // On non-Windows platforms, inject JS that intercepts fetch/XHR/elements
+    // and calls back to the Rust adblock engine via IPC.
+    #[cfg(not(target_os = "windows"))]
+    {
+        use crate::privacy::ad_blocker::injection_script;
+        let script = injection_script();
+        let _ = webview.eval(script);
+    }
+
     Ok(webview)
 }
 
