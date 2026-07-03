@@ -20,6 +20,7 @@ use storage::history::SessionHistory;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_http::init())
         .manage(Arc::new(Mutex::new(TabManager::new())))
         .manage(Arc::new(Mutex::new(ShieldState::new())))
         .manage(Arc::new(Mutex::new(HttpsOnlyState::new())))
@@ -36,6 +37,15 @@ pub fn run() {
             commands::switch_tab,
             commands::get_tabs,
             commands::reorder_tabs,
+            // Cross-platform ad blocking
+            commands::check_url,
+            commands::report_blocked_count,
+            commands::get_injection_script,
+            commands::reorder_tabs,
+            // Cross-platform ad blocking
+            commands::check_url,
+            commands::report_blocked_count,
+            commands::get_injection_script,
             // Privacy
             commands::get_blocked_count,
             commands::toggle_shield,
@@ -133,6 +143,15 @@ pub fn run() {
                 browser::webview::create_tab_webview(&window, &tab_id, "void://newtab", true)
             {
                 eprintln!("Failed to create initial tab webview: {e}");
+            }
+
+            // Inject cross-platform ad blocking script on non-Windows
+            #[cfg(not(target_os = "windows"))]
+            {
+                let script = commands::get_injection_script().await;
+                if let Some(wv) = app.get_webview(&tab_webview_label(&tab_id)) {
+                    let _ = wv.eval(&script);
+                }
             }
 
             Ok(())
