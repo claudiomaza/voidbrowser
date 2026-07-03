@@ -7,7 +7,6 @@ use crate::browser::navigation;
 use crate::browser::tabs::{Tab, TabInfo, TabManager};
 use crate::browser::webview;
 use crate::privacy::ad_blocker::ShieldState;
-use crate::privacy::ad_blocker_ipc;
 use crate::privacy::https_only::{self, HttpsOnlyState};
 use crate::storage::bookmarks::{self, Bookmark};
 use crate::storage::database::Database;
@@ -869,16 +868,28 @@ pub async fn check_url<R: Runtime>(
     source_url: String,
     request_type: String,
 ) -> Result<bool, String> {
-    let blocker = app.state::<Arc<Mutex<ShieldState>>>();
-    let state = blocker.lock().map_err(|e| e.to_string())?;
-    if state.is_disabled("ipc-intercept") {
-        return Ok(false);
-    }
-    drop(state);
+    use crate::privacy::ad_blocker::AdBlocker;
 
-    // Access the AdBlocker engine via ShieldState's internal data
-    // The ad_blocker_ipc module handles the request check
-    Ok(false)
+    // Check if ad blocking is disabled globally
+    let shield = app.state::<Arc<Mutex<ShieldState>>>();
+    {
+        let state = shield.lock().map_err(|e| e.to_string())?;
+        if state.is_disabled("global") {
+            return Ok(false);
+        }
+    }
+
+    // Query the AdBlocker engine
+    let blocker = app.state::<Arc<Mutex<AdBlocker>>>();
+    let engine = blocker.lock().map_err(|e| e.to_string())?;
+    let blocked = engine.should_block(&url, &source_url, &request_type);
+    if blocked {
+        // Increment the blocked count for stats
+        if let Ok(mut state) = shield.lock() {
+            state.increment("ipc-intercept", &url);
+        }
+    }
+    Ok(blocked)
 }
 
 #[tauri::command]
@@ -886,9 +897,12 @@ pub async fn report_blocked_count<R: Runtime>(
     app: AppHandle<R>,
     count: u32,
 ) -> Result<(), String> {
-    let shield = app.state::<Arc<Mutex<ShieldState>>>();
-    let mut state = shield.lock().map_err(|e| e.to_string())?;
-    state.increment("ipc-intercept", "cross-platform");
+    for _ in 0..count {
+        let shield = app.state::<Arc<Mutex<ShieldState>>>();
+        if let Ok(mut state) = shield.lock() {
+            state.increment("js-inject", "cross-platform");
+        }
+    }
     Ok(())
 }
 
