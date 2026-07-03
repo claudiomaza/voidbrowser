@@ -30,17 +30,17 @@ permissions:
   contents: write
 
 # ═══════════════════════════════════════════════════════════
-#   CONFIGURACIÓN DE PLATAFORMAS (usa vars. de repositorio, ej: vars.WINDOWS)
-#   Creá repository variables WINDOWS, LINUX, MACOS, ANDROID, IOS en Settings → Secrets and variables → Actions.
+#   CONFIGURACIÓN DE PLATAFORMAS
 #   En push rigen estos valores. En workflow_dispatch los
-#   inputs del UI sobreescriben estos defaults.
+#   inputs del UI sobreescriben.
 # ═══════════════════════════════════════════════════════════
+
 env:
-  WINDOWS: 'true'
-  LINUX: 'false'
-  MACOS: 'false'
-  ANDROID: 'true'
-  IOS: 'false'
+  WINDOWS_ENABLED: 'true'
+  LINUX_ENABLED: 'false'
+  MACOS_ENABLED: 'false'
+  ANDROID_ENABLED: 'true'
+  IOS_ENABLED: 'false'
 
 # ═══════════════════════════════════════════════════════════
 #   JOBS
@@ -49,10 +49,8 @@ env:
 jobs:
   # ────────────────────────── WINDOWS ──────────────────────────
   build-windows:
-    if: ${{ (github.event_name == 'push' && vars.WINDOWS == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_windows == 'true') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_windows == 'true' || github.event_name == 'push' && env.WINDOWS_ENABLED == 'true' }}
     runs-on: windows-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -87,10 +85,8 @@ jobs:
 
   # ────────────────────────── LINUX ───────────────────────────
   build-linux:
-    if: ${{ (github.event_name == 'push' && vars.LINUX == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_linux == 'true') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_linux == 'true' || github.event_name == 'push' && env.LINUX_ENABLED == 'true' }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -105,12 +101,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
-            build-essential \
-            curl wget file \
-            libxdo-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev
+            build-essential curl wget file \
+            libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev
       - name: Install deps
         run: pnpm install
       - uses: tauri-apps/tauri-action@v0
@@ -132,10 +125,8 @@ jobs:
 
   # ────────────────────────── macOS ──────────────────────────
   build-macos:
-    if: ${{ (github.event_name == 'push' && vars.MACOS == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_macos == 'true') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_macos == 'true' || github.event_name == 'push' && env.MACOS_ENABLED == 'true' }}
     runs-on: macos-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -164,10 +155,8 @@ jobs:
 
   # ───────────────────────── ANDROID ─────────────────────────
   build-android:
-    if: ${{ (github.event_name == 'push' && vars.ANDROID == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_android == 'true') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_android == 'true' || github.event_name == 'push' && env.ANDROID_ENABLED == 'true' }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -183,16 +172,19 @@ jobs:
           rustup target add armv7-linux-androideabi
           rustup target add x86_64-linux-android
           rustup target add i686-linux-android
-      - name: Setup Android SDK
+      - name: Setup Java / Android SDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Install Android SDK
         uses: android-actions/setup-android@v3
       - name: Install Linux deps
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            curl wget file \
-            libssl-dev \
-            libwebkit2gtk-4.1-dev
+            build-essential curl wget file \
+            libssl-dev libwebkit2gtk-4.1-dev
       - name: Install deps
         run: pnpm install
       - name: Init Android project
@@ -203,15 +195,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: src-tauri/gen/android/app/build/outputs/apk/*/*.apk
+          path: |
+            src-tauri/gen/android/app/build/outputs/apk/debug/*.apk
+            src-tauri/gen/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
   # ────────────────────────── iOS ───────────────────────────
   build-ios:
-    if: ${{ (github.event_name == 'push' && vars.IOS == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_ios == 'true') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_ios == 'true' || github.event_name == 'push' && env.IOS_ENABLED == 'true' }}
     runs-on: macos-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
