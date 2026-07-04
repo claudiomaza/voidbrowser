@@ -226,7 +226,7 @@ pub fn create_tab_webview<R: Runtime>(
 
             // Update window title if this is the active tab
             if is_active {
-                if let Some(window) = app_handle_for_title.get_window("main") {
+                if let Some(window) = app_handle_for_title.get_webview_window("main") {
                     let window_title = if title.is_empty() {
                         "VoidBrowser".to_string()
                     } else {
