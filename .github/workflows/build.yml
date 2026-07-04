@@ -172,13 +172,13 @@ jobs:
       - name: Build Android APK
         run: |
           export PATH="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
-          pnpm tauri android build
+          pnpm tauri android build --debug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: |
-            src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+            src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
           if-no-files-found: error
 
   # ────────────────────────── iOS ───────────────────────────
