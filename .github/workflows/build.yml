@@ -42,8 +42,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-        with:
-          version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install deps
         run: pnpm install
@@ -80,8 +78,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-        with:
-          version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Linux deps
         run: |
@@ -120,8 +116,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-        with:
-          version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install deps
         run: pnpm install
@@ -152,8 +146,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-        with:
-          version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Android Rust targets
         run: |
@@ -200,8 +192,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-        with:
-          version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install iOS Rust targets
         run: |
