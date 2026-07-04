@@ -50,6 +50,29 @@ pub fn create_tab_webview<R: Runtime>(
     url: &str,
     visible: bool,
 ) -> Result<Webview<R>, String> {
+    #[cfg(desktop)]
+    return create_tab_webview_desktop(window, tab_id, url, visible);
+
+    #[cfg(not(desktop))]
+    {
+        // On mobile: navigate the existing webview instead of creating a child
+        let _ = (tab_id, visible);
+        let existing = window.webviews().into_iter().next()
+            .ok_or_else(|| "No existing webview found".to_string())?;
+        if let Ok(parsed) = url.parse::<url::Url>() {
+            let _ = existing.navigate(parsed);
+        }
+        Ok(existing)
+    }
+}
+
+#[cfg(desktop)]
+pub fn create_tab_webview_desktop<R: Runtime>(
+    window: &Window<R>,
+    tab_id: &str,
+    url: &str,
+    visible: bool,
+) -> Result<Webview<R>, String> {
     let size = window.inner_size().map_err(|e| e.to_string())?;
     let scale = window.scale_factor().map_err(|e| e.to_string())?;
 
