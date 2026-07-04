@@ -170,9 +170,9 @@ jobs:
       - name: Init Android project
         run: pnpm tauri android init
       - name: Build Android APK
-        env:
-          RANLIB_aarch64_linux_android: llvm-ranlib
-        run: pnpm tauri android build
+        run: |
+          export PATH="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+          pnpm tauri android build
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
