@@ -144,7 +144,7 @@ pub async fn switch_tab<R: Runtime>(
     }
 
     // Update window title to reflect the new active tab
-    if let Some(window) = app.get_window("main") {
+    if let Some(window) = app.get_webview_window("main") {
         let window_title = if tab_title.is_empty() {
             "VoidBrowser".to_string()
         } else {
@@ -908,5 +908,5 @@ pub async fn report_blocked_count<R: Runtime>(
 
 #[tauri::command]
 pub async fn get_injection_script() -> String {
-    ad_blocker_ipc::injection_script().to_string()
+    crate::privacy::ad_blocker::injection_script().to_string()
 }
