@@ -178,8 +178,7 @@ jobs:
         with:
           name: android-apk
           path: |
-            src-tauri/gen/android/app/build/outputs/apk/debug/*.apk
-            src-tauri/gen/android/app/build/outputs/apk/release/*.apk
+            src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
           if-no-files-found: error
 
   # ────────────────────────── iOS ───────────────────────────
