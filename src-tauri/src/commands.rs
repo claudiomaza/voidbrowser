@@ -150,6 +150,7 @@ pub async fn close_tab<R: Runtime>(
             let new_label = webview_label(new_id);
             if let Some(wv) = app.get_webview(&new_label) {
                 let _ = wv_show(&wv);
+            }
         }
     }
 
