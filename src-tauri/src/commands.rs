@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime, Webview};
 
 use crate::browser::navigation;
 use crate::browser::tabs::{Tab, TabInfo, TabManager};
@@ -12,6 +12,52 @@ use crate::storage::bookmarks::{self, Bookmark};
 use crate::storage::database::Database;
 use crate::storage::history::{HistoryEntry, SessionHistory};
 use crate::storage::settings;
+
+// ── Cross-platform webview helpers ─────────────────────────────────────
+/// Hide a webview: native on desktop, JS eval on mobile.
+fn wv_hide<R: Runtime>(wv: &Webview<R>) -> Result<(), String> {
+    #[cfg(desktop)]
+    return wv.hide().map_err(|e| e.to_string());
+    #[cfg(not(desktop))]
+    wv.eval("void(0)").ok();
+    Ok(())
+}
+
+/// Show a webview: native on desktop, JS eval on mobile.
+fn wv_show<R: Runtime>(wv: &Webview<R>) -> Result<(), String> {
+    #[cfg(desktop)]
+    return wv.show().map_err(|e| e.to_string());
+    #[cfg(not(desktop))]
+    wv.eval("void(0)").ok();
+    Ok(())
+}
+
+/// Close a webview: native on desktop, navigate to blank on mobile.
+fn wv_close<R: Runtime>(wv: &Webview<R>) -> Result<(), String> {
+    #[cfg(desktop)]
+    return wv.close().map_err(|e| e.to_string());
+    #[cfg(not(desktop))]
+    {
+        let blank: url::Url = "about:blank".parse().expect("valid URL");
+        wv.navigate(blank).map_err(|e| e.to_string())
+    }
+}
+
+/// Set webview position: native on desktop, no-op on mobile.
+fn wv_set_position<R: Runtime>(wv: &Webview<R>, pos: tauri::LogicalPosition<f64>) -> Result<(), String> {
+    #[cfg(desktop)]
+    return wv.set_position(pos).map_err(|e| e.to_string());
+    #[cfg(not(desktop))]
+    Ok(())
+}
+
+/// Set webview size: native on desktop, no-op on mobile.
+fn wv_set_size<R: Runtime>(wv: &Webview<R>, size: tauri::LogicalSize<f64>) -> Result<(), String> {
+    #[cfg(desktop)]
+    return wv.set_size(size).map_err(|e| e.to_string());
+    #[cfg(not(desktop))]
+    Ok(())
+}
 
 /// Helper: get the webview label for a tab id.
 fn webview_label(tab_id: &str) -> String {
@@ -49,7 +95,7 @@ pub async fn create_tab<R: Runtime>(
         if let Some(prev_id) = &mgr.active_tab_id {
             let prev_label = webview_label(prev_id);
             if let Some(wv) = app.get_webview(&prev_label) {
-                let _ = wv.hide();
+                let _ = wv_hide(&wv);
             }
         }
 
@@ -88,7 +134,7 @@ pub async fn close_tab<R: Runtime>(
     // Close the webview
     let label = webview_label(&tab_id);
     if let Some(wv) = app.get_webview(&label) {
-        let _ = wv.close();
+        let _ = wv_close(&wv);
     }
 
     let _ = app.emit("tab-closed", &tab_id);
@@ -103,9 +149,7 @@ pub async fn close_tab<R: Runtime>(
             // Show the new active tab's webview
             let new_label = webview_label(new_id);
             if let Some(wv) = app.get_webview(&new_label) {
-                let _ = wv.show();
-            }
-            let _ = app.emit("active-tab-changed", new_id);
+                let _ = wv_show(&wv);
         }
     }
 
@@ -133,17 +177,15 @@ pub async fn switch_tab<R: Runtime>(
         if prev != &tab_id {
             let prev_label = webview_label(prev);
             if let Some(wv) = app.get_webview(&prev_label) {
-                let _ = wv.hide();
+                let _ = wv_hide(&wv);
             }
         }
     }
 
     let new_label = webview_label(&tab_id);
     if let Some(wv) = app.get_webview(&new_label) {
-        let _ = wv.show();
+        let _ = wv_show(&wv);
     }
-
-    // Update window title to reflect the new active tab
     if let Some(window) = app.get_webview_window("main") {
         let window_title = if tab_title.is_empty() {
             "VoidBrowser".to_string()
@@ -504,11 +546,11 @@ pub async fn set_sidebar_open<R: Runtime>(
     for tab_id in tab_ids {
         let label = webview_label(&tab_id);
         if let Some(wv) = app.get_webview(&label) {
-            let _ = wv.set_position(tauri::LogicalPosition::new(
+            let _ = wv_set_position(&wv, tauri::LogicalPosition::new(
                 sidebar_width,
                 webview::TOOLBAR_HEIGHT,
             ));
-            let _ = wv.set_size(tauri::LogicalSize::new(
+            let _ = wv_set_size(&wv, tauri::LogicalSize::new(
                 logical_width - sidebar_width,
                 logical_height - webview::TOOLBAR_HEIGHT,
             ));
@@ -533,9 +575,9 @@ pub async fn set_settings_open<R: Runtime>(
         let label = webview_label(&tab_id);
         if let Some(wv) = app.get_webview(&label) {
             if open {
-                let _ = wv.hide();
+                let _ = wv_hide(&wv);
             } else {
-                let _ = wv.show();
+                let _ = wv_show(&wv);
             }
         }
     }
@@ -899,9 +941,8 @@ pub async fn report_blocked_count<R: Runtime>(
 ) -> Result<(), String> {
     for _ in 0..count {
         let shield = app.state::<Arc<Mutex<ShieldState>>>();
-        if let Ok(mut state) = shield.lock() {
-            state.increment("js-inject", "cross-platform");
-        }
+        let Ok(mut state) = shield.lock() else { continue; };
+        state.increment("js-inject", "cross-platform");
     }
     Ok(())
 }
