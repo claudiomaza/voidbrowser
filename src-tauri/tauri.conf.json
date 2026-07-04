@@ -47,16 +47,6 @@
       "deb": {
         "depends": []
       }
-    },
-    "macOS": {
-      "minimumSystemVersion": "11.0"
-    },
-    "android": {
-      "minSdkVersion": 23,
-      "targetSdkVersion": 34
-    },
-    "ios": {
-      "minimumSystemVersion": "15.0"
     }
   }
 }
