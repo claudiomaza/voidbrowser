@@ -41,10 +41,12 @@ jobs:
           node-version: lts/*
       - uses: pnpm/action-setup@v4
         with:
+          version: 10
+        with:
           version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install deps
-        run: pnpm install --ignore-scripts && pnpm rebuild esbuild
+        run: pnpm install
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,6 +79,8 @@ jobs:
           node-version: lts/*
       - uses: pnpm/action-setup@v4
         with:
+          version: 10
+        with:
           version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Linux deps
@@ -86,7 +90,7 @@ jobs:
             libwebkit2gtk-4.1-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
       - name: Install deps
-        run: pnpm install --ignore-scripts && pnpm rebuild esbuild
+        run: pnpm install
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -115,10 +119,12 @@ jobs:
           node-version: lts/*
       - uses: pnpm/action-setup@v4
         with:
+          version: 10
+        with:
           version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install deps
-        run: pnpm install --ignore-scripts && pnpm rebuild esbuild
+        run: pnpm install
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -145,6 +151,8 @@ jobs:
           node-version: lts/*
       - uses: pnpm/action-setup@v4
         with:
+          version: 10
+        with:
           version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Android Rust targets
@@ -166,7 +174,7 @@ jobs:
           sudo apt-get install -y \
             build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev
       - name: Install deps
-        run: pnpm install --ignore-scripts && pnpm rebuild esbuild
+        run: pnpm install
       - name: Init Android project
         run: pnpm tauri android init
       - name: Build Android APK
@@ -191,6 +199,8 @@ jobs:
           node-version: lts/*
       - uses: pnpm/action-setup@v4
         with:
+          version: 10
+        with:
           version: latest
       - uses: dtolnay/rust-toolchain@stable
       - name: Install iOS Rust targets
@@ -198,7 +208,7 @@ jobs:
           rustup target add aarch64-apple-ios
           rustup target add aarch64-apple-ios-sim
       - name: Install deps
-        run: pnpm install --ignore-scripts && pnpm rebuild esbuild
+        run: pnpm install
       - name: Init iOS project
         run: pnpm tauri ios init
       - name: Build for iOS Simulator
